@@ -93,16 +93,6 @@ class ScadaDatabase:
         ''')
         rows = self.cursor.fetchall()
 
-    def detect_cascading_failures(self, time_window_seconds=300):
-        """Алгоритм предиктивного анализа каскадных сбоев"""
-        self.cursor.execute('''
-            SELECT unit_name, timestamp, parameter, current_value, critical_value 
-            FROM scada_logs 
-            WHERE status = 'CRITICAL'
-            ORDER BY unit_name, timestamp ASC
-        ''')
-        rows = self.cursor.fetchall()
-
     # ===================================================================================== Эта реализация метода на перспективу
     # def detect_cascading_failures(self, time_window_seconds=300):
     #     """Алгоритм предиктивного анализа каскадных сбоев за последние 24 часа"""

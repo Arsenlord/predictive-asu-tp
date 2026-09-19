@@ -162,10 +162,12 @@ class TodoApp(QMainWindow):
         self.refresh_data()
         
     def run_predictive_analysis(self):
-        alerts = self.db.detect_cascading_failures(time_window_seconds=300)
+        """Кнопка запуска алгоритма предиктивного анализа каскадных отказов"""
+        # Выполняем расчет один раз и кэшируем результат в переменную класса
+        self.last_alerts = self.db.detect_cascading_failures(time_window_seconds=300)
         
-        if alerts:
-            for alert in alerts:
+        if self.last_alerts:
+            for alert in self.last_alerts:
                 QMessageBox.critical(
                     self, 
                     "КРИТИЧЕСКАЯ УГРОЗА АВАРИИ!", 
@@ -174,6 +176,7 @@ class TodoApp(QMainWindow):
                     f"Аналитика АСУ ТП: {alert['details']}\n\n"
                     f"Рекомендация: Немедленно проверить систему ПАЗ, оповестить начальника смены и направить дежурного слесаря по КИПиА!"
                 )
+                break
         else:
             QMessageBox.information(
                 self, "Анализ завершен", 
@@ -195,7 +198,12 @@ class TodoApp(QMainWindow):
             return
             
         metrics = self.db.get_analytics_metrics()
-        alerts = self.db.detect_cascading_failures(time_window_seconds=300)
+        
+        # ОПТИМИЗАЦИЯ (DRY): Вместо повторного тяжелого запроса к БД используем кэш.
+        # Если пользователь не нажимал кнопку анализа ранее, рассчитываем на лету.
+        alerts = getattr(self, 'last_alerts', None)
+        if alerts is None:
+            alerts = self.db.detect_cascading_failures(time_window_seconds=300)
         
         report_text = [
             "===================================================================",
@@ -247,10 +255,7 @@ class TodoApp(QMainWindow):
             QMessageBox.information(self, "Экспорт успешен", f"Рапорт успешно записан в файл:\n{file_path}")
         except Exception as e:
             QMessageBox.critical(self, "Ошибка экспорта", f"Не удалось сохранить рапорт. Текст ошибки: {e}")
-            
-    def closeEvent(self, event):
-        self.db.close()
-        event.accept()
+
 
 def main():
     app = QApplication(sys.argv)
